@@ -10172,7 +10172,7 @@ const { Client } = __nccwpck_require__(324);
 
 __nccwpck_require__(2437).config();
 
-const supportedPropertyTypes = {"rich_text": "rich_text", "multi_select": "multi_select"};
+const SUPPORTED_PROPERTY_TYPES = {"RICH_TEXT": "rich_text", "MULTI_SELECT": "multi_select"};
 
 const getGitHubRequestHeaders = (username, accessToken) => ({
   headers: { Authorization: `Basic ${btoa(`${username}:${accessToken}`)}` },
@@ -10189,41 +10189,29 @@ const updateNotionStory = async (
 
   const pageDetails = await notion.pages.retrieve({ page_id: notionPageId });
 
-  if (propertyType === supportedPropertyTypes.rich_text) {
-    const existingPropertyValues = pageDetails.properties[propertyName].rich_text;
-  
-    if (existingPropertyValues.length === 0) {
-      await notion.pages.update({
-        page_id: notionPageId,
-        properties: {
-          [propertyName]: {
-            rich_text: [{ type: "text", text: { content: value } }],
-          },
-        },
-      });
-    } else {
-      const existingValue = existingPropertyValues[0].plain_text;
-      const combinedValue = `${existingValue},${value}`;
-      await notion.pages.update({
-        page_id: notionPageId,
-        properties: {
-          [propertyName]: {
-            rich_text: [{ type: "text", text: { content: combinedValue } }],
-          },
-        },
-      });
-    }
-  }
-
-  if (propertyType === supportedPropertyTypes.multi_select) {
-    const existingPropertyValues = pageDetails.properties[propertyName].multi_select;
-    existingPropertyValues.push({"name": value})
+  if (propertyType === SUPPORTED_PROPERTY_TYPES.RICH_TEXT) {
+    const richTextValues = pageDetails.properties[propertyName].rich_text;
+    richTextValues.push(value);
 
     await notion.pages.update({
       page_id: notionPageId,
       properties: {
         [propertyName]: {
-          multi_select: existingPropertyValues,
+          rich_text: [{ type: "text", text: { content: richTextValues.join(',') } }],
+        },
+      },
+    });
+  }
+
+  if (propertyType === SUPPORTED_PROPERTY_TYPES.MULTI_SELECT) {
+    const selectValues = pageDetails.properties[propertyName].multi_select;
+    selectValues.push({"name": value});
+
+    await notion.pages.update({
+      page_id: notionPageId,
+      properties: {
+        [propertyName]: {
+          multi_select: selectValues,
         },
       },
     });
@@ -10290,7 +10278,7 @@ const getConfig = () => {
       accessToken: process.env.GH_ACCESS_TOKEN,
       notionKey: process.env.NOTION_KEY,
       notionPropertyName: process.env.NOTION_PROPERTY_NAME,
-      notionPropertyType: process.env.NOTION_PROPERTY_TYPE,
+      notionPropertyType: process.env.NOTION_PROPERTY_TYPE || SUPPORTED_PROPERTY_TYPES.RICH_TEXT,
       notionUpdateValue: process.env.NOTION_UPDATE_VALUE,
     };
   }
@@ -10302,7 +10290,7 @@ const getConfig = () => {
     accessToken: core.getInput("gh-token"),
     notionKey: core.getInput("notion-key"),
     notionPropertyName: core.getInput("notion-property-name"),
-    notionPropertyType: core.getInput("notion-property-type"),
+    notionPropertyType: core.getInput("notion-property-type") || SUPPORTED_PROPERTY_TYPES.RICH_TEXT,
     notionUpdateValue: core.getInput("notion-update-value"),
   };
 };
@@ -10320,7 +10308,7 @@ const run = async () => {
     notionUpdateValue,
   } = getConfig();
 
-  if (!(notionPropertyType in supportedPropertyTypes)) {
+  if (!(SUPPORTED_PROPERTY_TYPES.hasOwnProperty(notionPropertyType.toUpperCase()))) {
     core.setFailed(
       `Type of Notion Page property ${notionPropertyType} is not supported.`
     );
@@ -10360,7 +10348,7 @@ const run = async () => {
       notionPageId,
       notionPropertyName,
       notionUpdateValue,
-      notionPropertyType || supportedPropertyTypes.rich_text
+      notionPropertyType
     );
   } catch (error) {
     core.setFailed(`Error updating Notion page ${notionPageId}: ${error}`);
