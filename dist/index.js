@@ -10178,10 +10178,10 @@ const getGitHubRequestHeaders = (username, accessToken) => ({
   headers: { Authorization: `Basic ${btoa(`${username}:${accessToken}`)}` },
 });
 
-const generateUpdateProps = (propertyType, value, pageDetails) => {
+const generateUpdateProps = (propertyType, propertyName, newValue, pageDetails) => {
   if (propertyType === SUPPORTED_PROPERTY_TYPES.RICH_TEXT) {
     const richTextValues = pageDetails.properties[propertyName].rich_text;
-    richTextValues.push(value);
+    richTextValues.push(newValue);
 
     return {
       rich_text: [{ type: "text", text: { content: richTextValues.join(',') } }],
@@ -10189,7 +10189,7 @@ const generateUpdateProps = (propertyType, value, pageDetails) => {
   }
   else if (propertyType === SUPPORTED_PROPERTY_TYPES.MULTI_SELECT) {
     const selectValues = pageDetails.properties[propertyName].multi_select;
-    selectValues.push({"name": value});
+    selectValues.push({"name": newValue});
 
     return {
       multi_select: selectValues,
@@ -10208,7 +10208,7 @@ const updateNotionStory = async (
 
   const pageDetails = await notion.pages.retrieve({ page_id: notionPageId });
 
-  const updateProps = generateUpdateProps(propertyType, value, pageDetails);
+  const updateProps = generateUpdateProps(propertyType, propertyName, value, pageDetails);
 
   await notion.pages.update({
     page_id: notionPageId,
